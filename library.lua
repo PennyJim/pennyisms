@@ -4,13 +4,13 @@ if ... ~= "library" then
   return require("library")
 end
 
----@class PeriodicLibraryGlobals
+---@class PennyismsGlobals
 local PM_Global = _ENV.__PM or {}
 _ENV.__PM = PM_Global
 
 ---@alias item_type "fluid"|"item"
 
----@class PeriodicLibrary
+---@class Pennyisms
 local PM = {}
 
 --MARK: Flag Functions
@@ -512,7 +512,7 @@ local custom_modifiers = PM_Global.custom_modifiers or {}
 PM_Global.custom_modifiers = custom_modifiers
 
 ---Defines the icon of the custom modifier when later used by `PM.custom_modifier`
----@see PeriodicLibrary.custom_modifier
+---@see Pennyisms.custom_modifier
 ---@param name string
 ---@param icons data.IconData[]
 function PM.define_modifier(name, icons)
@@ -524,7 +524,7 @@ function PM.define_modifier(name, icons)
 end
 
 ---Shorthand for a custom modifier. To have an icon defined, please use `PM.define_modifier`
----@see PeriodicLibrary.define_modifier
+---@see Pennyisms.define_modifier
 ---@param name string
 ---@param param number
 ---@param hidden? boolean
