@@ -15,6 +15,23 @@ local PM = {}
 
 --MARK: Inner Library
 
+---@generic T
+---@param list T[]
+---@param matches fun(a:T):boolean
+function PM.remove_from_list(list, matches)
+  local bad_indexes, bad_count = {}, 0
+  for index, ingredient in pairs(list) do
+    if matches(ingredient) then
+      bad_count = bad_count + 1
+      bad_indexes[bad_count] = index
+    end
+  end
+
+  for i = bad_count, 1, -1 do
+    table.remove(list, bad_indexes[i])
+  end
+end
+
 ---@generic T : string
 ---@param array T[]
 ---@return table<T,true>
@@ -289,6 +306,31 @@ end
 function PM.ignored_range_chance(name, amount_min, amount_max, probability, ignored_by_stats, type, index)
   return super_product(name, type, index, nil, amount_min, amount_max, probability, ignored_by_stats)
 end
+
+--MARK: Recipe Manipulation
+
+---@param item data.ItemID|data.FluidID
+---@param type item_type?
+---@return fun(a:data.IngredientPrototype|data.ProductPrototype):boolean
+local function ingredient_product_matches(item, type)
+  type = type or "item"
+  return function (ingredient)
+    return ingredient.type == type and ingredient.name == item
+  end
+end
+---@param ingredients data.IngredientPrototype[]
+---@param item data.ItemID|data.FluidID
+---@param type item_type?
+function PM.remove_ingredient(ingredients, item, type)
+  PM.remove_from_list(ingredients, ingredient_product_matches(item, type))
+end
+---@param products data.IngredientPrototype[]
+---@param item data.ItemID|data.FluidID
+---@param type item_type?
+function PM.remove_products(products, item, type)
+  PM.remove_from_list(products, ingredient_product_matches(item, type))
+end
+
 -- MARK: Entity Functions
 
 ---A shorthand for the LootItem
