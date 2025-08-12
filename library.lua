@@ -13,6 +13,19 @@ _ENV.__PM = PM_Global
 ---@class Pennyisms
 local PM = {}
 
+--MARK: Inner Library
+
+---@generic T : string
+---@param array T[]
+---@return table<T,true>
+function PM.array_to_lookup(array)
+  local lookup = {}
+  for _, item in pairs(array) do
+    lookup[item] = true
+  end
+  return lookup
+end
+
 --MARK: Flag Functions
 
 ---Returns whether or not the given flaglist contains the given flag
@@ -84,7 +97,7 @@ function PM.remove_flag(flagged_obj, flag)
   end
 end
 
---MARK: Recipe Functions
+--MARK: Recipe Ingredients
 
 ---Quickly makes the IngredientPrototype as if by using shorthand
 ---@param name data.ItemID|data.FluidID
@@ -120,6 +133,8 @@ function PM.catalyst_ingredient(name, amount, catalyst, type, index)
     fluidbox_index = index
   }--[[@as data.IngredientPrototype]]
 end
+
+--MARK: Recipe Products
 
 ---A local function to localize the product function implementaton
 ---@param name data.ItemID|data.FluidID
@@ -612,21 +627,10 @@ end
 
 --MARK: Module Categories
 
----@generic T : string
----@param array T[]
----@return table<T,true>
-local function array_to_lookup(array)
-  local lookup = {}
-  for _, item in pairs(array) do
-    lookup[item] = true
-  end
-  return lookup
-end
-
 ---@param blacklist? data.ModuleCategoryID[]
 ---@return data.ModuleCategoryID[]
 function PM.all_module_categories(blacklist)
-  local blacklist_lookup = array_to_lookup(blacklist or {})
+  local blacklist_lookup = PM.array_to_lookup(blacklist or {})
 
   local list, count = {}, 0
   for category, _ in pairs(data.raw["module-category"]) do
@@ -647,7 +651,7 @@ function PM.remove_module_categories(list, blacklist)
     return PM.all_module_categories(blacklist)
   end
 
-  local blacklist_lookup = array_to_lookup(blacklist)
+  local blacklist_lookup = PM.array_to_lookup(blacklist)
   for i = #list, 1, -1 do
     if blacklist_lookup[list[i]] then
       table.remove(list, i)
@@ -665,7 +669,7 @@ function PM.add_module_categories(list, new_categories)
     return PM.all_module_categories()
   end
 
-  local whitelist_lookup = array_to_lookup(new_categories)
+  local whitelist_lookup = PM.array_to_lookup(new_categories)
   for _, category in pairs(list) do
     whitelist_lookup[category] = nil
   end
