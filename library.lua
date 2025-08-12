@@ -17,11 +17,11 @@ local PM = {}
 
 ---@generic T
 ---@param list T[]
----@param matches fun(a:T):boolean
-function PM.remove_from_list(list, matches)
+---@param filter fun(a:T):boolean
+function PM.remove_from_list(list, filter)
   local bad_indexes, bad_count = {}, 0
   for index, ingredient in pairs(list) do
-    if matches(ingredient) then
+    if filter(ingredient) then
       bad_count = bad_count + 1
       bad_indexes[bad_count] = index
     end
