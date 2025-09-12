@@ -896,23 +896,30 @@ function PM.compat_send(recipient, msg, print_settings)
   })
 end
 
+PM.compound_events = {}
 
---MARK : Global variables: -- Doesn't work. shhh
-
--- ---@class PM.beltTier
--- ---@field [1] string  Belt
--- ---@field [2] string  Underground
--- ---@field [3] string  Splitter
--- ---@field [4] string? Loader
-
--- ---@type PM.beltTier[]
--- PM.belts = {
---   {"transport-belt",                  "underground-belt",                 "splitter",                 "loader"        },
---   {"fast-transport-belt",             "fast-underground-belt",            "fast-splitter",            "fast-loader"   },
---   {"pm-advanced-transport-belt",      "pm-advanced-underground-belt",     "pm-advanced-splitter",     nil             },
---   {"express-transport-belt",          "express-underground-belt",         "express-splitter",         "express-loader"},
---   {"pm-high-density-transport-belt",  "pm-high-density-underground-belt", "pm-high-density-splitter", nil             },
--- }
+---@alias Pennyisms.BuiltEventData
+---| EventData.on_built_entity
+---| EventData.on_robot_built_entity
+---| EventData.on_space_platform_built_entity
+---| EventData.script_raised_built
+---| EventData.script_raised_revive
+---| EventData.on_entity_cloned
+---@param event_handler event_handler.events?
+---@param handler fun(event:Pennyisms.BuiltEventData) Make sure your handler also handles `entity.destination`
+function PM.compound_events.built_events(event_handler, handler)
+  if not event_handler then error("Given events map is nil") end
+  for _, event_id in pairs{
+    defines.events.on_built_entity,
+    defines.events.on_robot_built_entity,
+    defines.events.on_space_platform_built_entity,
+    defines.events.script_raised_built,
+    defines.events.script_raised_revive,
+    defines.events.on_entity_cloned
+  } do
+    event_handler[event_id] = handler
+  end
+end
 
 return PM
 -- as it says on the tin
