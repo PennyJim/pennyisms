@@ -43,6 +43,17 @@ function PM.array_to_lookup(array)
   return lookup
 end
 
+---@generic T
+---@param array T[]
+---@param value T
+---@return boolean
+function PM.array_contains(array, value)
+  for _, item in pairs(array) do
+    if item == value then return true end
+  end
+  return false
+end
+
 --MARK: Flag Functions
 
 ---Returns whether or not the given flaglist contains the given flag
@@ -59,12 +70,8 @@ end
 function PM.has_flag(flagged_obj, flag)
   -- Does not have the flag if there's no flags
   if not flagged_obj.flags then return false end
-
-  for _, listed_flag in pairs(flagged_obj.flags) do
-    if listed_flag == flag then return true end
-  end
-
-  return false
+  
+  return PM.array_contains(flagged_obj.flags, flag)
 end
 ---Adds the flag if it wasn't already in the list.
 ---@param flagged_obj {flags:string[]?}
