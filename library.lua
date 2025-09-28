@@ -162,7 +162,7 @@ end
 
 ---A local function to localize the product function implementaton
 ---@param name data.ItemID|data.FluidID
----@param type "research-progress"|item_type?
+---@param type item_type?
 ---@param index uint32?
 ---@param amount number?
 ---@param amount_min number?
@@ -188,7 +188,7 @@ end
 ---Quickly makes the Prodcut result as if using shorthand
 ---@param name data.ItemID|data.FluidID
 ---@param amount number
----@param type "research-progress"|item_type?
+---@param type item_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.product(name, amount, type, index)
