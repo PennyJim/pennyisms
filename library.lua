@@ -856,6 +856,192 @@ function PM.script_trigger_effect(effect_id, effects)
   return effects
 end
 
+--MARK: Prototype fetching
+
+--- @overload fun(base_type: "achievement", name: string): data.AchievementPrototype
+--- @overload fun(base_type: "active-trigger", name: string): data.ActiveTriggerPrototype
+--- @overload fun(base_type: "airborne-pollutant", name: string): data.AirbornePollutantPrototype
+--- @overload fun(base_type: "ambient-sound", name: string): data.AmbientSound
+--- @overload fun(base_type: "ammo-category", name: string): data.AmmoCategory
+--- @overload fun(base_type: "animation", name: string): data.AnimationPrototype
+--- @overload fun(base_type: "asteroid-chunk", name: string): data.AsteroidChunkPrototype
+--- @overload fun(base_type: "autoplace-control", name: string): data.AutoplaceSpecification
+--- @overload fun(base_type: "burner-usage", name: string): data.BurnerUsagePrototype
+--- @overload fun(base_type: "collision-layer", name: string): data.CollisionLayerPrototype
+--- @overload fun(base_type: "custom-event", name: string): data.CustomEventPrototype
+--- @overload fun(base_type: "custom-input", name: string): data.CustomInputPrototype
+--- @overload fun(base_type: "damage-type", name: string): data.DamageType
+--- @overload fun(base_type: "decorative", name: string): data.DecorativePrototype
+--- @overload fun(base_type: "deliver-category", name: string): data.DeliverCategory
+--- @overload fun(base_type: "deliver-impact-combination", name: string): data.DeliverImpactCombination
+--- @overload fun(base_type: "editor-controller", name: string): data.EditorControllerPrototype
+--- @overload fun(base_type: "entity", name: string): data.EntityPrototype
+--- @overload fun(base_type: "equipment", name: string): data.EquipmentPrototype
+--- @overload fun(base_type: "equipment-category", name: string): data.EquipmentCategory
+--- @overload fun(base_type: "equipment-grid", name: string): data.EquipmentGridPrototype
+--- @overload fun(base_type: "fluid", name: string): data.FluidPrototype
+--- @overload fun(base_type: "font", name: string): data.FontPrototype
+--- @overload fun(base_type: "fuel-category", name: string): data.FuelCategory
+--- @overload fun(base_type: "god-controller", name: string): data.GodControllerPrototype
+--- @overload fun(base_type: "gui-style", name: string): data.GuiStyle
+--- @overload fun(base_type: "impact-category", name: string): data.ImpactCategory
+--- @overload fun(base_type: "item", name: string): data.ItemPrototype
+--- @overload fun(base_type: "item-group", name: string): data.ItemGroup
+--- @overload fun(base_type: "item-subgroup", name: string): data.ItemSubGroup
+--- @overload fun(base_type: "map-gen-presets", name: string): data.MapGenPresets
+--- @overload fun(base_type: "map-settings", name: string): data.MapSettings
+--- @overload fun(base_type: "module-category", name: string): data.ModuleCategory
+--- @overload fun(base_type: "mouse-cursor", name: string): data.MouseCursor
+--- @overload fun(base_type: "noise-expression", name: string): data.NamedNoiseExpression
+--- @overload fun(base_type: "noise-function", name: string): data.NamedNoiseFunction
+--- @overload fun(base_type: "particle", name: string): data.ParticlePrototype
+--- @overload fun(base_type: "procession", name: string): data.ProcessionPrototype
+--- @overload fun(base_type: "procession-layer-inheritance-group", name: string): data.ProcessionLayerInheritanceGroup
+--- @overload fun(base_type: "quality", name: string): data.QualityPrototype
+--- @overload fun(base_type: "recipe", name: string): data.RecipePrototype
+--- @overload fun(base_type: "recipe-category", name: string): data.RecipeCategory
+--- @overload fun(base_type: "remote-controller", name: string): data.RemoteControllerPrototype
+--- @overload fun(base_type: "resource-category", name: string): data.ResourceCategory
+--- @overload fun(base_type: "shortcut", name: string): data.ShortcutPrototype
+--- @overload fun(base_type: "sound", name: string): data.SoundPrototype
+--- @overload fun(base_type: "space-connection", name: string): data.SpaceConnectionPrototype
+--- @overload fun(base_type: "space-location", name: string): data.SpaceLocationPrototype
+--- @overload fun(base_type: "spectator-controller", name: string): data.SpectatorControllerPrototype
+--- @overload fun(base_type: "sprite", name: string): data.SpritePrototype
+--- @overload fun(base_type: "surface", name: string): data.SurfacePrototype
+--- @overload fun(base_type: "surface-property", name: string): data.SurfacePropertyPrototype
+--- @overload fun(base_type: "technology", name: string): data.TechnologyPrototype
+--- @overload fun(base_type: "tile", name: string): data.TilePrototype
+--- @overload fun(base_type: "tile-effect", name: string): data.TileEffectDefinition
+--- @overload fun(base_type: "tips-and-tricks-item", name: string): data.TipsAndTricksItem
+--- @overload fun(base_type: "tips-and-tricks-item-category", name: string): data.TipsAndTricksItemCategory
+--- @overload fun(base_type: "trigger-target-type", name: string): data.TriggerTargetType
+--- @overload fun(base_type: "trivial-smoke", name: string): data.TrivialSmokePrototype
+--- @overload fun(base_type: "tutorial", name: string): data.TutorialDefinition
+--- @overload fun(base_type: "utility-constants", name: string): data.UtilityConstants
+--- @overload fun(base_type: "utility-sounds", name: string): data.UtilitySounds
+--- @overload fun(base_type: "utility-sprites", name: string): data.UtilitySounds
+--- @overload fun(base_type: "virtual-signal", name: string): data.VirtualSignalPrototype
+function PM.get_prototype(base_type, name)
+  for type in pairs(defines.prototypes[base_type]) do
+    local type_lookup = data.raw[type]
+    if type_lookup then
+      local proto = type_lookup[name]
+      if proto then return proto end
+    end
+  end
+  error("'"..base_type.."' prototype '"..name.."' was not found")
+end
+
+--- @type table<string, string?>
+local base_type_lookup = {}
+for base_type, derived_types in pairs(defines.prototypes) do
+  for derived_type in pairs(derived_types) do
+    base_type_lookup[derived_type] = base_type
+  end
+end
+
+---@param type string
+---@return string?
+function PM.get_base_type(type)
+  return base_type_lookup[type]
+end
+
+--MARK: Locale manipulation
+
+--- This section was taken from flib and lightly modified
+--- License:
+-- Copyright (c) 2020 raiguard
+
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+
+-- The above copyright notice and this permission notice shall be included in all
+-- copies or substantial portions of the Software.
+
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+-- SOFTWARE.
+
+--- Returns the localised name of the given prototype.
+--- @overload fun(prototype: data.PrototypeBase): data.LocalisedString
+--- @overload fun(base_type: string, name: string): data.LocalisedString
+function PM.locale_of(prototype, name)
+  -- In this case, `prototype` is actually `base_type`.
+  if type(prototype) == "string" then
+    return PM.locale_of(PM.get_prototype(prototype, name) --[[@as data.PrototypeBase]])
+  end
+  if prototype.type == "recipe" then
+    return PM.locale_of_recipe(prototype --[[@as data.RecipePrototype]])
+  elseif defines.prototypes.item[prototype.type] then
+    return PM.locale_of_item(prototype --[[@as data.ItemPrototype]])
+  else
+    return prototype.localised_name or { PM.get_base_type(prototype.type) .. "-name." .. prototype.name }
+  end
+end
+
+--- Returns the localised name of the given item.
+--- @param item data.ItemPrototype
+--- @return data.LocalisedString
+function PM.locale_of_item(item)
+  if not defines.prototypes.item[item.type] then
+    error("Given prototype is not an item: " .. serpent.block(item))
+  end
+  if item.localised_name then
+    return item.localised_name
+  end
+  local type_name = "item"
+  --- @type data.PrototypeBase?
+  local prototype
+  if item.place_result then
+    type_name = "entity"
+    prototype = PM.get_prototype("entity", item.place_result) --[[@as data.PrototypeBase]]
+  elseif item.place_as_equipment_result then
+    type_name = "equipment"
+    prototype = PM.get_prototype("equipment", item.place_as_equipment_result) --[[@as data.PrototypeBase]]
+  elseif item.place_as_tile then
+    local tile_prototype = data.raw.tile[item.place_as_tile.result]
+    -- Tiles with variations don't have a localised name
+    if tile_prototype and tile_prototype.localised_name then
+      prototype = tile_prototype
+      type_name = "tile"
+    end
+  end
+  return prototype and prototype.localised_name or { type_name .. "-name." .. item.name }
+end
+
+--- Returns the localised name of the given recipe.
+--- @param recipe data.RecipePrototype
+--- @return data.LocalisedString
+function PM.locale_of_recipe(recipe)
+  if recipe.type ~= "recipe" then
+    error("Given prototype is not an recipe: " .. serpent.block(recipe))
+  end
+  if recipe.localised_name then
+    return recipe.localised_name
+  end
+  local main_product = recipe.main_product -- LuaLS gets confused if we don't assign to a local.
+  if main_product == "" then
+    return { "recipe-name." .. recipe.name }
+  elseif main_product and main_product == recipe.name then
+    return PM.locale_of_item(PM.get_prototype("item", main_product))
+  end
+  local results = recipe.results
+  if results and #results == 1 and results[1].name == recipe.name then
+    return PM.locale_of_item(PM.get_prototype("item", results[1].name))
+  end
+  return { "recipe-name." .. recipe.name }
+end
+
+
 --MARK: Runtime library
 
 ---@type boolean?
