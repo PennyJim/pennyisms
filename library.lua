@@ -142,7 +142,7 @@ end
 ---Shorthand for an catalyst ingredient
 ---@param name data.ItemID|data.FluidID
 ---@param amount number
----@param catalyst number
+---@param catalyst number?
 ---@param type item_type?
 ---@param index uint32?
 ---@return data.IngredientPrototype
@@ -152,7 +152,7 @@ function PM.catalyst_ingredient(name, amount, catalyst, type, index)
   return {
     name = name,
     amount = amount,
-    ignored_by_stats = catalyst,
+    ignored_by_stats = catalyst or amount,
     type = type or "item",
     fluidbox_index = index
   }--[[@as data.IngredientPrototype]]
@@ -228,33 +228,36 @@ end
 ---Builds a product that acts as a catalyst
 ---@param name data.ItemID|data.FluidID
 ---@param amount number
----@param catalyst number
+---@param catalyst number? Defaults to `amount`
 ---@param type item_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.catalyst(name, amount, catalyst, type, index)
+  catalyst = catalyst or amount
   return super_product(name, type, index, amount, nil, nil, nil, catalyst, catalyst)
 end
 ---Builds a catalyst product that has a range of results
 ---@param name data.ItemID|data.FluidID
 ---@param amount_min number
 ---@param amount_max number
----@param catalyst number
+---@param catalyst number? Defaults to `amount_max`
 ---@param type item_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.catalyst_range(name, amount_min, amount_max, catalyst, type, index)
+  catalyst = catalyst or amount_max
   return super_product(name, type, index, nil, amount_min, amount_max, nil, catalyst, catalyst)
 end
 ---Builds a catalyst product that has a chance of being returned
 ---@param name data.ItemID|data.FluidID
 ---@param amount number
 ---@param probability number
----@param catalyst number
+---@param catalyst number? Defaults to `amount`
 ---@param type item_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.catalyst_chance(name, amount, probability, catalyst, type, index)
+  catalyst = catalyst or amount
   return super_product(name, type, index, amount, nil, nil, probability, catalyst, catalyst)
 end
 ---Builds a catalyst product that has a chance to return a range of results
@@ -262,57 +265,59 @@ end
 ---@param amount_min number
 ---@param amount_max number
 ---@param probability number
----@param catalyst number
+---@param catalyst number? Defaults to `amount_max`
 ---@param type item_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.catalyst_range_chance(name, amount_min, amount_max, probability, catalyst, type, index)
+  catalyst = catalyst or amount_max
   return super_product(name, type, index, nil, amount_min, amount_max, probability, catalyst, catalyst)
 end
 ---Builds a product that is ignored by stats
 ---@param name data.ItemID|data.FluidID
 ---@param amount number
----@param ignored_by_stats number
+---@param ignored_by_stats number? Defaults to `amount`
 ---@param type item_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.ignored(name, amount, ignored_by_stats, type, index)
-  return super_product(name, type, index, amount, nil, nil, nil, ignored_by_stats)
+  return super_product(name, type, index, amount, nil, nil, nil, ignored_by_stats or amount)
 end
 ---Builds an ignorable by stats product that has a range of results
 ---@param name data.ItemID|data.FluidID
 ---@param amount_min number
 ---@param amount_max number
----@param ignored_by_stats number
+---@param ignored_by_stats number? Defaults to `amount_max`
 ---@param type item_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.ignored_range(name, amount_min, amount_max, ignored_by_stats, type, index)
-  return super_product(name, type, index, nil, amount_min, amount_max, nil, ignored_by_stats)
+  return super_product(name, type, index, nil, amount_min, amount_max, nil, ignored_by_stats or amount_max)
 end
 ---Builds an ignorable by stats product that has a chance of being returned
 ---@param name data.ItemID|data.FluidID
 ---@param amount number
 ---@param probability number
----@param ignored_by_stats number
+---@param ignored_by_stats number? Defaults to `amount`
 ---@param type item_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.ignored_chance(name, amount, probability, ignored_by_stats, type, index)
-  return super_product(name, type, index, amount, nil, nil, probability, ignored_by_stats)
+  return super_product(name, type, index, amount, nil, nil, probability, ignored_by_stats or amount)
 end
 ---Builds an ignorable by stats product that has a chance to return a range of results
 ---@param name data.ItemID|data.FluidID
 ---@param amount_min number
 ---@param amount_max number
 ---@param probability number
----@param ignored_by_stats number
+---@param ignored_by_stats number? Defaults to `amount_max`
 ---@param type item_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.ignored_range_chance(name, amount_min, amount_max, probability, ignored_by_stats, type, index)
-  return super_product(name, type, index, nil, amount_min, amount_max, probability, ignored_by_stats)
+  return super_product(name, type, index, nil, amount_min, amount_max, probability, ignored_by_stats or amount_max)
 end
+--TODO: add an ignored_catalyst set for ones that might produce more than input, yet don't want the extra to be prod'd
 
 --MARK: Recipe Manipulation
 
