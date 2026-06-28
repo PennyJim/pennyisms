@@ -176,6 +176,26 @@ local function amount_array(input)
   return min, max
 end
 
+---@alias data.SharedProbabilityDefinition.array {[1]:number,[2]:number}
+---@param input data.SharedProbabilityDefinition.array?
+---@return data.SharedProbabilityDefinition?
+local function shared_array(input)
+  if not input then return nil end
+  local min = input[1]
+  local max = input[2]
+  if min < 0 then
+    error("Shared probability minimum cannot be lower than 0")
+  elseif min > max then
+    error("Shared probability mininmum must be lower than the maximum")
+  elseif max > 1 then
+    error("Shared probability maximum cannot be higher than 1")
+  end
+  return {
+    min = min,
+    max = max,
+  }
+end
+
 ---A local function to localize the product function implementaton
 ---@param name data.ItemID|data.FluidID
 ---@param type item_type?
@@ -183,10 +203,11 @@ end
 ---@param amount number?
 ---@param amount_range data.ProductPrototype.amount_array?
 ---@param probability number?
+---@param shared_probability data.SharedProbabilityDefinition.array?
 ---@param ignored_by_stats number?
 ---@param ignored_by_productivity number?
 ---@return data.ProductPrototype
-local function super_product(name, type, index, amount, amount_range, probability, ignored_by_stats, ignored_by_productivity)
+local function super_product(name, type, index, amount, amount_range, probability, shared_probability, ignored_by_stats, ignored_by_productivity)
   if probability and probability <= 0.0 then error("Probability is 0. Did you mean to do this?") end
   if amount and amount < 0 then error("Product result is negative") end
   local amount_min, amount_max = amount_array(amount_range)
@@ -197,7 +218,8 @@ local function super_product(name, type, index, amount, amount_range, probabilit
     amount = amount,
     amount_min = amount_min,
     amount_max = amount_max,
-    probability = probability,
+    independent_probability = probability,
+    shared_probability = shared_array(shared_probability),
     ignored_by_stats = ignored_by_stats,
     ignored_by_productivity = ignored_by_productivity,
   }--[[@as data.ProductPrototype]]
@@ -230,6 +252,27 @@ end
 function PM.product_chance(name, amount, probability, type, index)
   return super_product(name, type, index, amount, nil, probability)
 end
+---Acts like its own short-hand for a shared probabilistic product
+---@param name data.ItemID|data.FluidID
+---@param amount number
+---@param shared_probability data.SharedProbabilityDefinition.array
+---@param type item_type?
+---@param index uint32?
+---@return data.ProductPrototype
+function PM.product_shared_chance(name, amount, shared_probability, type, index)
+  return super_product(name, type, index, amount, nil, nil, shared_probability)
+end
+---Acts like its own short-hand for a combination shared probabilistic product
+---@param name data.ItemID|data.FluidID
+---@param amount number
+---@param probability number
+---@param shared_probability data.SharedProbabilityDefinition.array
+---@param type item_type?
+---@param index uint32?
+---@return data.ProductPrototype
+function PM.product_combined_chance(name, amount, probability, shared_probability, type, index)
+  return super_product(name, type, index, amount, nil, probability, shared_probability)
+end
 ---Builds a probabilistic product with a range of output
 ---@param name data.ItemID|data.FluidID
 ---@param amount_range data.ProductPrototype.amount_array
@@ -249,7 +292,7 @@ end
 ---@return data.ProductPrototype
 function PM.catalyst(name, amount, catalyst, type, index)
   catalyst = catalyst or amount
-  return super_product(name, type, index, amount, nil, nil, catalyst, catalyst)
+  return super_product(name, type, index, amount, nil, nil, nil, catalyst, catalyst)
 end
 ---Builds a catalyst product that has a range of results
 ---@param name data.ItemID|data.FluidID
@@ -260,7 +303,7 @@ end
 ---@return data.ProductPrototype
 function PM.catalyst_range(name, amount_range, catalyst, type, index)
   catalyst = catalyst or amount_range[2]
-  return super_product(name, type, index, nil, amount_range, nil, catalyst, catalyst)
+  return super_product(name, type, index, nil, amount_range, nil, nil, catalyst, catalyst)
 end
 ---Builds a catalyst product that has a chance of being returned
 ---@param name data.ItemID|data.FluidID
@@ -272,7 +315,32 @@ end
 ---@return data.ProductPrototype
 function PM.catalyst_chance(name, amount, probability, catalyst, type, index)
   catalyst = catalyst or amount
-  return super_product(name, type, index, amount, nil, probability, catalyst, catalyst)
+  return super_product(name, type, index, amount, nil, probability, nil, catalyst, catalyst)
+end
+---Builds a catalyst product that has a chance of being returned
+---@param name data.ItemID|data.FluidID
+---@param amount number
+---@param shared_probability data.SharedProbabilityDefinition.array
+---@param catalyst number? Defaults to `amount`
+---@param type item_type?
+---@param index uint32?
+---@return data.ProductPrototype
+function PM.catalyst_shared_chance(name, amount, shared_probability, catalyst, type, index)
+  catalyst = catalyst or amount
+  return super_product(name, type, index, amount, nil, nil, shared_probability, catalyst, catalyst)
+end
+---Builds a catalyst product that has a chance of being returned
+---@param name data.ItemID|data.FluidID
+---@param amount number
+---@param probability number
+---@param shared_probability data.SharedProbabilityDefinition.array
+---@param catalyst number? Defaults to `amount`
+---@param type item_type?
+---@param index uint32?
+---@return data.ProductPrototype
+function PM.catalyst_combined_chance(name, amount, probability, shared_probability, catalyst, type, index)
+  catalyst = catalyst or amount
+  return super_product(name, type, index, amount, nil, probability, shared_probability, catalyst, catalyst)
 end
 ---Builds a catalyst product that has a chance to return a range of results
 ---@param name data.ItemID|data.FluidID
@@ -284,7 +352,32 @@ end
 ---@return data.ProductPrototype
 function PM.catalyst_range_chance(name, amount_range, probability, catalyst, type, index)
   catalyst = catalyst or amount_range[2]
-  return super_product(name, type, index, nil, amount_range, probability, catalyst, catalyst)
+  return super_product(name, type, index, nil, amount_range, probability, nil, catalyst, catalyst)
+end
+---Builds a catalyst product that has a chance to return a range of results
+---@param name data.ItemID|data.FluidID
+---@param amount_range data.ProductPrototype.amount_array
+---@param shared_probability data.SharedProbabilityDefinition.array
+---@param catalyst number? Defaults to `amount_max`
+---@param type item_type?
+---@param index uint32?
+---@return data.ProductPrototype
+function PM.catalyst_range_shared_chance(name, amount_range, shared_probability, catalyst, type, index)
+  catalyst = catalyst or amount_range[2]
+  return super_product(name, type, index, nil, amount_range, nil, shared_probability, catalyst, catalyst)
+end
+---Builds a catalyst product that has a chance to return a range of results
+---@param name data.ItemID|data.FluidID
+---@param amount_range data.ProductPrototype.amount_array
+---@param probability number
+---@param shared_probability data.SharedProbabilityDefinition.array
+---@param catalyst number? Defaults to `amount_max`
+---@param type item_type?
+---@param index uint32?
+---@return data.ProductPrototype
+function PM.catalyst_range_combined_chance(name, amount_range, probability, shared_probability, catalyst, type, index)
+  catalyst = catalyst or amount_range[2]
+  return super_product(name, type, index, nil, amount_range, probability, shared_probability, catalyst, catalyst)
 end
 ---Builds a product that is ignored by stats
 ---@param name data.ItemID|data.FluidID
@@ -294,7 +387,7 @@ end
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.ignored(name, amount, ignored_by_stats, type, index)
-  return super_product(name, type, index, amount, nil, nil, ignored_by_stats or amount)
+  return super_product(name, type, index, amount, nil, nil, nil, ignored_by_stats or amount)
 end
 ---Builds an ignorable by stats product that has a range of results
 ---@param name data.ItemID|data.FluidID
@@ -304,7 +397,7 @@ end
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.ignored_range(name, amount_range, ignored_by_stats, type, index)
-  return super_product(name, type, index, nil, amount_range, nil, ignored_by_stats or amount_range[2])
+  return super_product(name, type, index, nil, amount_range, nil, nil, ignored_by_stats or amount_range[2])
 end
 ---Builds an ignorable by stats product that has a chance of being returned
 ---@param name data.ItemID|data.FluidID
@@ -315,7 +408,30 @@ end
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.ignored_chance(name, amount, probability, ignored_by_stats, type, index)
-  return super_product(name, type, index, amount, nil, probability, ignored_by_stats or amount)
+  return super_product(name, type, index, amount, nil, probability, nil, ignored_by_stats or amount)
+end
+---Builds an ignorable by stats product that has a chance of being returned
+---@param name data.ItemID|data.FluidID
+---@param amount number
+---@param shared_probability data.SharedProbabilityDefinition.array
+---@param ignored_by_stats number? Defaults to `amount`
+---@param type item_type?
+---@param index uint32?
+---@return data.ProductPrototype
+function PM.ignored_shared_chance(name, amount, shared_probability, ignored_by_stats, type, index)
+  return super_product(name, type, index, amount, nil, nil, shared_probability, ignored_by_stats or amount)
+end
+---Builds an ignorable by stats product that has a chance of being returned
+---@param name data.ItemID|data.FluidID
+---@param amount number
+---@param probability number
+---@param shared_probability data.SharedProbabilityDefinition.array
+---@param ignored_by_stats number? Defaults to `amount`
+---@param type item_type?
+---@param index uint32?
+---@return data.ProductPrototype
+function PM.ignored_combined_chance(name, amount, probability, shared_probability, ignored_by_stats, type, index)
+  return super_product(name, type, index, amount, nil, probability, shared_probability, ignored_by_stats or amount)
 end
 ---Builds an ignorable by stats product that has a chance to return a range of results
 ---@param name data.ItemID|data.FluidID
@@ -326,7 +442,30 @@ end
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.ignored_range_chance(name, amount_range, probability, ignored_by_stats, type, index)
-  return super_product(name, type, index, nil, amount_range, probability, ignored_by_stats or amount_range[2])
+  return super_product(name, type, index, nil, amount_range, probability, nil, ignored_by_stats or amount_range[2])
+end
+---Builds an ignorable by stats product that has a chance to return a range of results
+---@param name data.ItemID|data.FluidID
+---@param amount_range data.ProductPrototype.amount_array
+---@param shared_probability data.SharedProbabilityDefinition.array
+---@param ignored_by_stats number? Defaults to `amount_max`
+---@param type item_type?
+---@param index uint32?
+---@return data.ProductPrototype
+function PM.ignored_range_shared_chance(name, amount_range, shared_probability, ignored_by_stats, type, index)
+  return super_product(name, type, index, nil, amount_range, nil, shared_probability, ignored_by_stats or amount_range[2])
+end
+---Builds an ignorable by stats product that has a chance to return a range of results
+---@param name data.ItemID|data.FluidID
+---@param amount_range data.ProductPrototype.amount_array
+---@param probability number
+---@param shared_probability data.SharedProbabilityDefinition.array
+---@param ignored_by_stats number? Defaults to `amount_max`
+---@param type item_type?
+---@param index uint32?
+---@return data.ProductPrototype
+function PM.ignored_range_combined_chance(name, amount_range, probability, shared_probability, ignored_by_stats, type, index)
+  return super_product(name, type, index, nil, amount_range, probability, shared_probability, ignored_by_stats or amount_range[2])
 end
 --TODO: add an ignored_catalyst set for ones that might produce more than input, yet don't want the extra to be prod'd
 
