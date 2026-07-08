@@ -78,7 +78,7 @@ local function int_range(x, min, max)
   return true
 end
 
-local type_validation = {
+PM.validate = {
   ---@return TypeGuard<int8>
   int8 = function(x) return int_range(x, -2^7, 2^7-1) end,
   ---@return TypeGuard<int8>
@@ -95,7 +95,16 @@ local type_validation = {
   uint64 = function(x) return int_range(x, 0, 2^53) end,
   ---@return TypeGuard<float|double>
   number = function(x) return x == x end,
+  ---@return TypeGuard<integer>
+  integer = function(x)
+    local _, fraction = math.modf(x)
+    return fraction ~= 0
+  end,
+  ---@return TypeGuard<data.FluidAmount|FluidAmount>
   fluidamount = function(x) return float_range(x, 0, 2^40-(1/2^24)) end,
+
+  float_range = float_range,
+  int_range = int_range,
 }
 
 --MARK: Flag Functions
@@ -210,13 +219,13 @@ end
 local function validate_item_amounts(min, max, level)
   level = level and level + 1 or 2
   if not max then
-    if not type_validation.uint16(min) then
+    if not PM.validate.uint16(min) then
       error("Product result must be a uint16", level)
     end
   else
-    if not type_validation.uint16(min) then
+    if not PM.validate.uint16(min) then
       error("Product minimum result must be a uint16", level)
-    elseif not type_validation.uint16(min) then
+    elseif not PM.validate.uint16(min) then
       error("Product maximum result must be a uint16", level)
     elseif not float_range(max, min, 1/0) then
       error("Product maximum must be >= minimum", level)
@@ -230,13 +239,13 @@ end
 local function validate_fluid_amounts(min, max, level)
   level = level and level + 1 or 2
   if not max then
-    if not type_validation.fluidamount(min) then
+    if not PM.validate.fluidamount(min) then
       error("Product result cannot be valid FluidAmount", level)
     end
   else
-    if not type_validation.fluidamount(min) then
+    if not PM.validate.fluidamount(min) then
       error("Product minimum result must be a valid FluidAmount", level)
-    elseif not type_validation.fluidamount(max) then
+    elseif not PM.validate.fluidamount(max) then
       error("Product maximum result must be a valid FluidAmount")
     elseif not float_range(max, min, 1/0) then
       error("Product maximum must be >= minimum", level)
@@ -693,11 +702,11 @@ function product_builder_base.catalyst(self,num, can_quality)
   num = num or max
 
   if product.type == "item" then
-    if not type_validation.uint16(num) then
+    if not PM.validate.uint16(num) then
       error("Catalyst amount must be a uint16")
     end
   else
-    if not type_validation.fluidamount(num) then
+    if not PM.validate.fluidamount(num) then
       error("Catalyst amount must be a valid FluidAmount")
     end
   end
@@ -727,11 +736,11 @@ function product_builder_base.ignored(self, num)
     error("Unecessary call to set ignored amount to the same as catalyst amount")
   end
   if product.type == "item" then
-    if not type_validation.uint16(num) then
+    if not PM.validate.uint16(num) then
       error("Ignored amount must be a uint16")
     end
   else
-    if not type_validation.fluidamount(num) then
+    if not PM.validate.fluidamount(num) then
       error("ignored amount must be a valid FluidAmount")
     end
   end
@@ -786,7 +795,7 @@ product_builder_fluid = util.copy(product_builder_base)
 function product_builder_fluid.index(self,index, ...)
   self.index = nil
 
-  if not type_validation.uint32(index) then
+  if not PM.validate.uint32(index) then
     error("Fluidbox index must be a uint32")
   elseif index == 0 then
     error("Fluidbox index is already 0 by default. There is no point of defining it as so")
@@ -796,7 +805,7 @@ function product_builder_fluid.index(self,index, ...)
   ---@type {[uint32]?:true}
   local seen_indexes = {[index]=true}
   for i, index in pairs(additional) do
-    if not type_validation.uint32(index) or index == 0 then
+    if not PM.validate.uint32(index) or index == 0 then
       error("Optional fluidbox index ["..i.."] must be a non-zero uint32")
     elseif seen_indexes[index] then
       error("Fluidbox indexes must be unique within a recipe")
@@ -822,7 +831,7 @@ end
 ---@return Omit<T,'temperature'>
 function product_builder_fluid.temperature(self,temperature)
   self.temperature = nil
-  if not type_validation.number(temperature) then
+  if not PM.validate.number(temperature) then
     error("Temperature must not be NaN")
   end
   self.prod.temperature = temperature
@@ -835,7 +844,7 @@ end
 ---@return Omit<T,'multiplier'>
 function product_builder_fluid.buffer(self, multiplier)
   self.buffer = nil
-  if not type_validation.uint8(multiplier) or multiplier == 0 then
+  if not PM.validate.uint8(multiplier) or multiplier == 0 then
     error("Fluidbox multiplier must be a non-zero uint8")
   end
   self.prod.fluidbox_multiplier = multiplier
@@ -895,7 +904,7 @@ end
 ---@return Omit<T,'quality_bump'>
 function product_builder_item.quality_bump(self, bump)
   self.quality_bump = nil
-  if not type_validation.int8(bump) then
+  if not PM.validate.int8(bump) then
     error("Quality change must be an int8")
   elseif bump == 0 then
     error("Defining a quality change of 0 is unecessary")
