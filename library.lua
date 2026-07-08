@@ -4,11 +4,13 @@ if ... ~= "library" then
   return require("library")
 end
 
+---@diagnostic disable-next-line: access-invisible
 ---@class PennyismsGlobals
 local PM_Global = _ENV.__PM or {}
 _ENV.__PM = PM_Global
 
----@alias item_type "fluid"|"item"
+---@alias product_type "fluid"|"item"
+---@alias product_amount data.FluidAmount|uint16
 
 ---@class Pennyisms
 local PM = {}
@@ -166,8 +168,8 @@ end
 
 ---Quickly makes the IngredientPrototype as if by using shorthand
 ---@param name data.ItemID|data.FluidID
----@param amount number
----@param type item_type?
+---@param amount product_amount
+---@param type product_type?
 ---@param index uint32?
 ---@overload fun(name:data.ItemID,amount:number,type:"item"|nil):data.ItemIngredientPrototype
 ---@overload fun(name:data.FluidID,amount:number,type:"fluid",index:uint32):data.FluidIngredientPrototype
@@ -182,9 +184,9 @@ function PM.ingredient(name, amount, type, index)
 end
 ---Shorthand for an catalyst ingredient
 ---@param name data.ItemID|data.FluidID
----@param amount number
----@param catalyst number?
----@param type item_type?
+---@param amount product_amount
+---@param catalyst product_amount?
+---@param type product_type?
 ---@param index uint32?
 ---@return data.IngredientPrototype
 ---@overload fun(name:data.ItemID,amount:number,catalyst:number,type:"item"|nil):data.ItemIngredientPrototype
@@ -239,7 +241,7 @@ local function validate_fluid_amounts(min, max, level)
   end
 end
 
----@param type item_type?
+---@param type product_type?
 ---@param min uint16|data.FluidAmount
 ---@param max? uint16|data.FluidAmount
 ---@param level? int
@@ -283,8 +285,8 @@ local function validate_chance(min, max, level)
   end
 end
 
----@alias data.ProductPrototype.amount_array {[1]:number,[2]:number}
----@param type item_type?
+---@alias data.ProductPrototype.amount_array [data.FluidAmount,data.FluidAmount]|[uint16,uint16]
+---@param type product_type?
 ---@param input data.ProductPrototype.amount_array?
 ---@return number? min
 ---@return number? max
@@ -294,7 +296,7 @@ local function convert_amount_array(type, input)
   return input[1], input[2]
 end
 
----@alias data.SharedProbabilityDefinition.array {[1]:number,[2]:number}
+---@alias data.SharedProbabilityDefinition.array [number,number]
 ---@param input data.SharedProbabilityDefinition.array?
 ---@return data.SharedProbabilityDefinition?
 local function convert_shared_array(input)
@@ -304,14 +306,14 @@ end
 
 ---A local function to localize the product function implementaton
 ---@param name data.ItemID|data.FluidID
----@param type item_type?
+---@param type product_type?
 ---@param index uint32?
----@param amount number?
+---@param amount product_amount?
 ---@param amount_range data.ProductPrototype.amount_array?
 ---@param probability number?
 ---@param shared_probability data.SharedProbabilityDefinition.array?
----@param ignored_by_stats number?
----@param ignored_by_productivity number?
+---@param ignored_by_stats product_amount?
+---@param ignored_by_productivity product_amount?
 ---@return data.ProductPrototype
 local function super_product(name, type, index, amount, amount_range, probability, shared_probability, ignored_by_stats, ignored_by_productivity)
   validate_chance(probability)
@@ -334,8 +336,8 @@ local function super_product(name, type, index, amount, amount_range, probabilit
 end
 ---Quickly makes the Prodcut result as if using shorthand
 ---@param name data.ItemID|data.FluidID
----@param amount number
----@param type item_type?
+---@param amount product_amount
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.product(name, amount, type, index)
@@ -344,7 +346,7 @@ end
 ---Acts like its own short-hand for a product with a range of possible amounts
 ---@param name data.ItemID|data.FluidID
 ---@param amount_range data.ProductPrototype.amount_array
----@param type item_type?
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.product_range(name, amount_range, type, index)
@@ -352,9 +354,9 @@ function PM.product_range(name, amount_range, type, index)
 end
 ---Acts like its own short-hand for a probabilistic product
 ---@param name data.ItemID|data.FluidID
----@param amount number
+---@param amount product_amount
 ---@param probability number
----@param type item_type?
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.product_chance(name, amount, probability, type, index)
@@ -362,9 +364,9 @@ function PM.product_chance(name, amount, probability, type, index)
 end
 ---Acts like its own short-hand for a shared probabilistic product
 ---@param name data.ItemID|data.FluidID
----@param amount number
+---@param amount product_amount
 ---@param shared_probability data.SharedProbabilityDefinition.array
----@param type item_type?
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.product_shared_chance(name, amount, shared_probability, type, index)
@@ -372,10 +374,10 @@ function PM.product_shared_chance(name, amount, shared_probability, type, index)
 end
 ---Acts like its own short-hand for a combination shared probabilistic product
 ---@param name data.ItemID|data.FluidID
----@param amount number
+---@param amount product_amount
 ---@param probability number
 ---@param shared_probability data.SharedProbabilityDefinition.array
----@param type item_type?
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.product_combined_chance(name, amount, probability, shared_probability, type, index)
@@ -385,7 +387,7 @@ end
 ---@param name data.ItemID|data.FluidID
 ---@param amount_range data.ProductPrototype.amount_array
 ---@param probability number
----@param type item_type?
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.product_range_chance(name, amount_range, probability, type, index)
@@ -393,9 +395,9 @@ function PM.product_range_chance(name, amount_range, probability, type, index)
 end
 ---Builds a product that acts as a catalyst
 ---@param name data.ItemID|data.FluidID
----@param amount number
----@param catalyst number? Defaults to `amount`
----@param type item_type?
+---@param amount product_amount
+---@param catalyst product_amount? Defaults to `amount`
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.catalyst(name, amount, catalyst, type, index)
@@ -405,8 +407,8 @@ end
 ---Builds a catalyst product that has a range of results
 ---@param name data.ItemID|data.FluidID
 ---@param amount_range data.ProductPrototype.amount_array
----@param catalyst number? Defaults to `amount_max`
----@param type item_type?
+---@param catalyst product_amount? Defaults to `amount_max`
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.catalyst_range(name, amount_range, catalyst, type, index)
@@ -415,10 +417,10 @@ function PM.catalyst_range(name, amount_range, catalyst, type, index)
 end
 ---Builds a catalyst product that has a chance of being returned
 ---@param name data.ItemID|data.FluidID
----@param amount number
+---@param amount product_amount
 ---@param probability number
----@param catalyst number? Defaults to `amount`
----@param type item_type?
+---@param catalyst product_amount? Defaults to `amount`
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.catalyst_chance(name, amount, probability, catalyst, type, index)
@@ -427,10 +429,10 @@ function PM.catalyst_chance(name, amount, probability, catalyst, type, index)
 end
 ---Builds a catalyst product that has a chance of being returned
 ---@param name data.ItemID|data.FluidID
----@param amount number
+---@param amount product_amount
 ---@param shared_probability data.SharedProbabilityDefinition.array
----@param catalyst number? Defaults to `amount`
----@param type item_type?
+---@param catalyst product_amount? Defaults to `amount`
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.catalyst_shared_chance(name, amount, shared_probability, catalyst, type, index)
@@ -439,11 +441,11 @@ function PM.catalyst_shared_chance(name, amount, shared_probability, catalyst, t
 end
 ---Builds a catalyst product that has a chance of being returned
 ---@param name data.ItemID|data.FluidID
----@param amount number
+---@param amount product_amount
 ---@param probability number
 ---@param shared_probability data.SharedProbabilityDefinition.array
----@param catalyst number? Defaults to `amount`
----@param type item_type?
+---@param catalyst product_amount? Defaults to `amount`
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.catalyst_combined_chance(name, amount, probability, shared_probability, catalyst, type, index)
@@ -454,8 +456,8 @@ end
 ---@param name data.ItemID|data.FluidID
 ---@param amount_range data.ProductPrototype.amount_array
 ---@param probability number
----@param catalyst number? Defaults to `amount_max`
----@param type item_type?
+---@param catalyst product_amount? Defaults to `amount_max`
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.catalyst_range_chance(name, amount_range, probability, catalyst, type, index)
@@ -466,8 +468,8 @@ end
 ---@param name data.ItemID|data.FluidID
 ---@param amount_range data.ProductPrototype.amount_array
 ---@param shared_probability data.SharedProbabilityDefinition.array
----@param catalyst number? Defaults to `amount_max`
----@param type item_type?
+---@param catalyst product_amount? Defaults to `amount_max`
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.catalyst_range_shared_chance(name, amount_range, shared_probability, catalyst, type, index)
@@ -479,8 +481,8 @@ end
 ---@param amount_range data.ProductPrototype.amount_array
 ---@param probability number
 ---@param shared_probability data.SharedProbabilityDefinition.array
----@param catalyst number? Defaults to `amount_max`
----@param type item_type?
+---@param catalyst product_amount? Defaults to `amount_max`
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.catalyst_range_combined_chance(name, amount_range, probability, shared_probability, catalyst, type, index)
@@ -489,9 +491,9 @@ function PM.catalyst_range_combined_chance(name, amount_range, probability, shar
 end
 ---Builds a product that is ignored by stats
 ---@param name data.ItemID|data.FluidID
----@param amount number
----@param ignored_by_stats number? Defaults to `amount`
----@param type item_type?
+---@param amount product_amount
+---@param ignored_by_stats product_amount? Defaults to `amount`
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.ignored(name, amount, ignored_by_stats, type, index)
@@ -500,8 +502,8 @@ end
 ---Builds an ignorable by stats product that has a range of results
 ---@param name data.ItemID|data.FluidID
 ---@param amount_range data.ProductPrototype.amount_array
----@param ignored_by_stats number? Defaults to `amount_max`
----@param type item_type?
+---@param ignored_by_stats product_amount? Defaults to `amount_max`
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.ignored_range(name, amount_range, ignored_by_stats, type, index)
@@ -509,10 +511,10 @@ function PM.ignored_range(name, amount_range, ignored_by_stats, type, index)
 end
 ---Builds an ignorable by stats product that has a chance of being returned
 ---@param name data.ItemID|data.FluidID
----@param amount number
+---@param amount product_amount
 ---@param probability number
----@param ignored_by_stats number? Defaults to `amount`
----@param type item_type?
+---@param ignored_by_stats product_amount? Defaults to `amount`
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.ignored_chance(name, amount, probability, ignored_by_stats, type, index)
@@ -520,10 +522,10 @@ function PM.ignored_chance(name, amount, probability, ignored_by_stats, type, in
 end
 ---Builds an ignorable by stats product that has a chance of being returned
 ---@param name data.ItemID|data.FluidID
----@param amount number
+---@param amount product_amount
 ---@param shared_probability data.SharedProbabilityDefinition.array
----@param ignored_by_stats number? Defaults to `amount`
----@param type item_type?
+---@param ignored_by_stats product_amount? Defaults to `amount`
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.ignored_shared_chance(name, amount, shared_probability, ignored_by_stats, type, index)
@@ -531,11 +533,11 @@ function PM.ignored_shared_chance(name, amount, shared_probability, ignored_by_s
 end
 ---Builds an ignorable by stats product that has a chance of being returned
 ---@param name data.ItemID|data.FluidID
----@param amount number
+---@param amount product_amount
 ---@param probability number
 ---@param shared_probability data.SharedProbabilityDefinition.array
----@param ignored_by_stats number? Defaults to `amount`
----@param type item_type?
+---@param ignored_by_stats product_amount? Defaults to `amount`
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.ignored_combined_chance(name, amount, probability, shared_probability, ignored_by_stats, type, index)
@@ -545,8 +547,8 @@ end
 ---@param name data.ItemID|data.FluidID
 ---@param amount_range data.ProductPrototype.amount_array
 ---@param probability number
----@param ignored_by_stats number? Defaults to `amount_max`
----@param type item_type?
+---@param ignored_by_stats product_amount? Defaults to `amount_max`
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.ignored_range_chance(name, amount_range, probability, ignored_by_stats, type, index)
@@ -556,8 +558,8 @@ end
 ---@param name data.ItemID|data.FluidID
 ---@param amount_range data.ProductPrototype.amount_array
 ---@param shared_probability data.SharedProbabilityDefinition.array
----@param ignored_by_stats number? Defaults to `amount_max`
----@param type item_type?
+---@param ignored_by_stats product_amount? Defaults to `amount_max`
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.ignored_range_shared_chance(name, amount_range, shared_probability, ignored_by_stats, type, index)
@@ -568,8 +570,8 @@ end
 ---@param amount_range data.ProductPrototype.amount_array
 ---@param probability number
 ---@param shared_probability data.SharedProbabilityDefinition.array
----@param ignored_by_stats number? Defaults to `amount_max`
----@param type item_type?
+---@param ignored_by_stats product_amount? Defaults to `amount_max`
+---@param type product_type?
 ---@param index uint32?
 ---@return data.ProductPrototype
 function PM.ignored_range_combined_chance(name, amount_range, probability, shared_probability, ignored_by_stats, type, index)
@@ -606,7 +608,7 @@ local product_builder_item
 
 
 ---@return product_builder
----@overload fun(name:data.ItemID,type?:"item"):product_builder.item
+---@overload fun(name:data.ItemID):product_builder.item
 ---@overload fun(name:data.FluidID,type:"fluid"):product_builder.fluid
 function PM.product_builder(name, type)
   local self
@@ -639,10 +641,10 @@ end
 
 ---@generic T : product_builder.base.partial
 ---@param self T
----@param min float
----@param max? float
+---@param min product_amount
+---@param max? product_amount
 ---@return Omit<T,'amount'>
----@overload fun(self:T,amount:float):Omit<T,'amount'>
+---@overload fun(self:T,amount:product_amount):Omit<T,'amount'>
 function product_builder_base.amount(self, min, max)
   self.amount = nil
   local prod = self.prod
@@ -660,29 +662,26 @@ end
 
 ---@param product data.ProductPrototype
 ---@param error_message any
----@return number min
----@return number max
+---@return product_amount min
+---@return product_amount max
 ---@overload fun(product:data.ItemProductPrototype,error_message:any):uint16,uint16
 ---@overload fun(product:data.FluidProductPrototype,error_message:any):data.FluidAmount,data.FluidAmount
 local function get_amount(product, error_message)
   if product.amount then
-    ---@diagnostic disable-next-line: return-type-mismatch
     return product.amount, product.amount
   else
     if not product.amount_min or not product.amount_max then
       error(error_message, 2)
     end
-    ---@diagnostic disable-next-line: return-type-mismatch
     return product.amount_min, product.amount_max
   end
 end
 
 ---@generic T : product_builder.base.partial
 ---@param self T
----@param num? number
----@param can_quality nil
+---@param num? product_amount
 ---@return Omit<T,'catalyst'|'static_quality'>
----@overload fun<T:product_builder.item.partial>(self:T,num?:number,can_quality:true):Omit<T,'catalyst'|'static_quality'>
+---@overload fun<T:product_builder.item.partial>(self:T,num?:product_amount,can_quality:true):Omit<T,'catalyst'|'static_quality'>
 function product_builder_base.catalyst(self,num, can_quality)
   self.catalyst = nil
   self--[[@as product_builder.item.partial]].static_quality = nil
@@ -706,7 +705,7 @@ end
 
 ---@generic T : product_builder.base.partial
 ---@param self T
----@param num? number
+---@param num? product_amount
 ---@return Omit<T,'catalyst'|'ignored'>
 function product_builder_base.ignored(self, num)
   self.catalyst = nil
@@ -732,7 +731,6 @@ end
 ---@param max? number
 ---@return Omit<T,'chance'|'combined_chance'>
 ---@overload fun(self:T,chance:number):Omit<T,'chance'|'combined_chance'>
----@overload fun(self:T,min:number,max:number):Omit<T,'chance'|'combined_chance'>
 function product_builder_base.chance(self,min,max)
   self.chance = nil
   self.combined_chance = nil
@@ -904,7 +902,7 @@ end
 --MARK: Recipe Manipulation
 
 ---@param item data.ItemID|data.FluidID
----@param type item_type?
+---@param type product_type?
 ---@return fun(a:data.IngredientPrototype|data.ProductPrototype):boolean
 local function ingredient_product_matches(item, type)
   type = type or "item"
@@ -914,32 +912,34 @@ local function ingredient_product_matches(item, type)
 end
 ---@param ingredients data.IngredientPrototype[]
 ---@param item data.ItemID|data.FluidID
----@param type item_type?
+---@param type product_type?
 function PM.remove_ingredient(ingredients, item, type)
-  PM.remove_from_list(ingredients, ingredient_product_matches(item, type))
+  local filter = ingredient_product_matches(item, type)
+  ---@cast filter fun(a:data.IngredientPrototype):boolean
+  PM.remove_from_list(ingredients, filter)
 end
----@param products data.IngredientPrototype[]
+---@param products data.ProductPrototype[]
 ---@param item data.ItemID|data.FluidID
----@param type item_type?
+---@param type product_type?
 function PM.remove_products(products, item, type)
-  PM.remove_from_list(products, ingredient_product_matches(item, type))
+  local filter = ingredient_product_matches(item, type)
+  ---@cast filter fun(a:data.ProductPrototype):boolean
+  PM.remove_from_list(products, filter)
 end
 
 -- MARK: Entity Functions
 
 ---A shorthand for the LootItem
 ---@param item data.ItemID
----@param count_min number? Default is `1`
----@param count_max number? must be `> 0`, Default is `1`
+---@param count_min uint16? Default is `1`
+---@param count_max uint16? must be `> 0`, Default is `1`
 ---@param probability number? must be between `0` and `1`, Default is `1`
----@return data.LootItem
+---@return data.ItemProductPrototype
 function PM.loot(item, count_min, count_max, probability)
-  return {
-    item = item,
-    count_min = count_min,
-    count_max = count_max,
-    probability = probability,
-  } --[[@as data.LootItem]]
+  return PM.product_builder(item)
+    :amount(count_min or 1, count_max)
+    :chance(probability)
+    :done()--[[@as data.ItemProductPrototype]]
 end
 
 -- MARK: Technology Functions
@@ -1205,7 +1205,9 @@ function PM.get_custom_modification(name, technology)
   for _, modifier in pairs(effects) do
     if modifier.type == "nothing"
     and modifier.effect_description[1] == locale_key then
-      change = change + tonumber(modifier.effect_description[2])
+      local num = tonumber(modifier.effect_description[2])
+      ---@cast num int
+      change = change + num
     end
   end
 
@@ -1361,6 +1363,7 @@ function PM.script_trigger(effect_id, triggers)
     }
   end
 
+  ---@cast triggers data.Trigger
   -- return triggers to overwrite
   return triggers
 end
@@ -1400,12 +1403,13 @@ function PM.script_trigger_delivery(effect_id, deliveries)
 
   -- Create new delivery item if there was no instant
   if not has_instant then
-    deliveries[#deliveries+1] = {
+    deliveries[#deliveries+1] = ({
       type = "instant",
       source_effects = PM.script_trigger_effect(effect_id)
-    }
+    }--[[@as data.InstantTriggerDelivery]])
   end
 
+  ---@cast deliveries data.TriggerDelivery[]
   -- return deliveries to overwrite
   return deliveries
 end
@@ -1439,11 +1443,14 @@ function PM.script_trigger_effect(effect_id, effects)
     effect_id = effect_id,
   }
 
+  ---@cast effects data.TriggerEffect[]
   -- return effects to overwrite
   return effects
 end
 
 --MARK: Prototype fetching
+
+--FIXME: Make this use the same generics that FMTK will eventually output
 
 --- @overload fun(base_type: "achievement", name: string): data.AchievementPrototype
 --- @overload fun(base_type: "active-trigger", name: string): data.ActiveTriggerPrototype
@@ -1509,6 +1516,7 @@ end
 --- @overload fun(base_type: "utility-sounds", name: string): data.UtilitySounds
 --- @overload fun(base_type: "utility-sprites", name: string): data.UtilitySounds
 --- @overload fun(base_type: "virtual-signal", name: string): data.VirtualSignalPrototype
+--- @overload fun(base_type: string, name: string): data.PrototypeBase
 function PM.get_prototype(base_type, name)
   for type in pairs(defines.prototypes[base_type]) do
     local type_lookup = data.raw[type]
@@ -1564,13 +1572,17 @@ end
 function PM.locale_of(prototype, name)
   -- In this case, `prototype` is actually `base_type`.
   if type(prototype) == "string" then
+    ---@diagnostic disable-next-line: return-type-mismatch (type recursion)
     return PM.locale_of(PM.get_prototype(prototype, name) --[[@as data.PrototypeBase]])
   end
   if prototype.type == "recipe" then
+    ---@diagnostic disable-next-line: return-type-mismatch (type recursion)
     return PM.locale_of_recipe(prototype --[[@as data.RecipePrototype]])
   elseif defines.prototypes.item[prototype.type] then
+    ---@diagnostic disable-next-line: return-type-mismatch (type recursion)
     return PM.locale_of_item(prototype --[[@as data.ItemPrototype]])
   else
+    ---@diagnostic disable-next-line: return-type-mismatch (type recursion)
     return prototype.localised_name or { PM.get_base_type(prototype.type) .. "-name." .. prototype.name }
   end
 end
@@ -1583,6 +1595,7 @@ function PM.locale_of_item(item)
     error("Given prototype is not an item: " .. serpent.block(item))
   end
   if item.localised_name then
+    ---@diagnostic disable-next-line: return-type-mismatch (type recursion)
     return item.localised_name
   end
   local type_name = "item"
@@ -1602,6 +1615,7 @@ function PM.locale_of_item(item)
       type_name = "tile"
     end
   end
+    ---@diagnostic disable-next-line: return-type-mismatch (type recursion)
   return prototype and prototype.localised_name or { type_name .. "-name." .. item.name }
 end
 
@@ -1613,6 +1627,7 @@ function PM.locale_of_recipe(recipe)
     error("Given prototype is not an recipe: " .. serpent.block(recipe))
   end
   if recipe.localised_name then
+    ---@diagnostic disable-next-line: return-type-mismatch (type recursion)
     return recipe.localised_name
   end
   local main_product = recipe.main_product -- LuaLS gets confused if we don't assign to a local.
