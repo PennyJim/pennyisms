@@ -95,6 +95,7 @@ local type_validation = {
   uint64 = function(x) return int_range(x, 0, 2^53) end,
   ---@return TypeGuard<float|double>
   number = function(x) return x == x end,
+  fluidamount = function(x) return float_range(x, 0, 2^40-(1/2^24)) end,
 }
 
 --MARK: Flag Functions
@@ -229,12 +230,14 @@ end
 local function validate_fluid_amounts(min, max, level)
   level = level and level + 1 or 2
   if not max then
-    if not float_range(min, 0, 1/0) then
-      error("Product result cannot be negative", level)
+    if not type_validation.fluidamount(min) then
+      error("Product result cannot be valid FluidAmount", level)
     end
   else
-    if not float_range(min, 0, 1/0) then
-      error("Product minimum cannot be negative", level)
+    if not type_validation.fluidamount(min) then
+      error("Product minimum result must be a valid FluidAmount", level)
+    elseif not type_validation.fluidamount(max) then
+      error("Product maximum result must be a valid FluidAmount")
     elseif not float_range(max, min, 1/0) then
       error("Product maximum must be >= minimum", level)
     end
@@ -687,10 +690,16 @@ function product_builder_base.catalyst(self,num, can_quality)
   self--[[@as product_builder.item.partial]].static_quality = nil
   local product = self.prod
   local min,max = get_amount(product, "Product amount must be defined before Catalyst amount")
-
   num = num or max
-  if not float_range(num, 0, 1/0) then
-    error("Catalyst ammount cannot be negative")
+
+  if product.type == "item" then
+    if not type_validation.uint16(num) then
+      error("Catalyst amount must be a uint16")
+    end
+  else
+    if not type_validation.fluidamount(num) then
+      error("Catalyst amount must be a valid FluidAmount")
+    end
   end
 
   product.ignored_by_productivity = num
@@ -712,13 +721,19 @@ function product_builder_base.ignored(self, num)
   self.ignored = nil
   local product = self.prod
   local min,max = get_amount(product, "Product amount must be defined before Ignored amount")
-
   num = num or max
-  if not float_range(num, 0, 1/0) then
-    error("Ignored ammount cannot be negative")
-  end
+
   if num == product.ignored_by_stats then
     error("Unecessary call to set ignored amount to the same as catalyst amount")
+  end
+  if product.type == "item" then
+    if not type_validation.uint16(num) then
+      error("Ignored amount must be a uint16")
+    end
+  else
+    if not type_validation.fluidamount(num) then
+      error("ignored amount must be a valid FluidAmount")
+    end
   end
   product.ignored_by_stats = num
 
