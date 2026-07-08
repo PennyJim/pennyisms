@@ -54,6 +54,47 @@ function PM.array_contains(array, value)
   return false
 end
 
+---MARK: Type validation
+
+---@param x number
+---@param min number
+---@param max number
+local function float_range(x, min, max)
+  if x < min then return false end
+  if x > max then return false end
+  return true
+end
+
+---@param x number
+---@param min int
+---@param max int
+---@return TypeGuard<int>
+local function int_range(x, min, max)
+  local _, fraction = math.modf(x)
+  if fraction ~= 0 then return false end
+  if not float_range(x, min, max) then return false end
+  return true
+end
+
+local type_validation = {
+  ---@return TypeGuard<int8>
+  int8 = function(x) return int_range(x, -2^7, 2^7-1) end,
+  ---@return TypeGuard<int8>
+  int16 = function(x) return int_range(x, -2^15, 2^15-1) end,
+  ---@return TypeGuard<int8>
+  int32 = function(x) return int_range(x, -2^31, 2^31-1) end,
+  ---@return TypeGuard<uint8>
+  uint8 = function(x) return int_range(x, 0, 2^8-1) end,
+  ---@return TypeGuard<uint16>
+  uint16 = function(x) return int_range(x, 0, 2^16-1) end,
+  ---@return TypeGuard<uint32>
+  uint32 = function(x) return int_range(x, 0, 2^32-1) end,
+  ---@return TypeGuard<uint64>
+  uint64 = function(x) return int_range(x, 0, 2^53) end,
+  ---@return TypeGuard<float|double>
+  number = function(x) return x == x end,
+}
+
 --MARK: Flag Functions
 
 ---Returns whether or not the given flaglist contains the given flag
@@ -160,40 +201,105 @@ end
 
 --MARK: Recipe Products
 
+---@param min uint16
+---@param max? uint16
+---@param level? int
+local function validate_item_amounts(min, max, level)
+  level = level and level + 1 or 2
+  if not max then
+    if not type_validation.uint16(min) then
+      error("Product result must be a uint16", level)
+    end
+  else
+    if not type_validation.uint16(min) then
+      error("Product minimum result must be a uint16", level)
+    elseif not type_validation.uint16(min) then
+      error("Product maximum result must be a uint16", level)
+    elseif not float_range(max, min, 1/0) then
+      error("Product maximum must be >= minimum", level)
+    end
+  end
+end
+
+---@param min data.FluidAmount
+---@param max? data.FluidAmount
+---@param level? int
+local function validate_fluid_amounts(min, max, level)
+  level = level and level + 1 or 2
+  if not max then
+    if not float_range(min, 0, 1/0) then
+      error("Product result cannot be negative", level)
+    end
+  else
+    if not float_range(min, 0, 1/0) then
+      error("Product minimum cannot be negative", level)
+    elseif not float_range(max, min, 1/0) then
+      error("Product maximum must be >= minimum", level)
+    end
+  end
+end
+
+---@param type item_type?
+---@param min uint16|data.FluidAmount
+---@param max? uint16|data.FluidAmount
+---@param level? int
+---@overload fun(amount:number)
+local function validate_amounts(type, min, max, level)
+  level = level and level + 1 or 2
+  if type == "fluid" then
+    ---@cast min data.FluidAmount
+    ---@cast max data.FluidAmount?
+    return validate_fluid_amounts(min, max, level)
+  else
+    ---@cast min uint16
+    ---@cast max uint16?
+    return validate_item_amounts(min, max, level)
+  end
+end
+
+---@param min number?
+---@param max? number
+---@param level? int
+---@return data.SharedProbabilityDefinition?
+---@overload fun(amount:number?)
+---@overload fun(min:number,max:number):data.SharedProbabilityDefinition
+local function validate_chance(min, max, level)
+  level = level and level + 1 or 2
+  if not min then return end
+  if not max then
+    if not float_range(min, 0, 1) then
+      error("Product probability must be within [0-1]", level)
+    end
+  else
+    if not float_range(min, 0, max) then
+      error("Shared probability minimum must be within [0-max]", level)
+    elseif not float_range(max, min, 1) then
+      error("Shared probability maximum must be within [min-1]", level)
+    end
+    return {
+      min = min,
+      max = max,
+    }
+  end
+end
+
 ---@alias data.ProductPrototype.amount_array {[1]:number,[2]:number}
+---@param type item_type?
 ---@param input data.ProductPrototype.amount_array?
 ---@return number? min
 ---@return number? max
-local function amount_array(input)
+local function convert_amount_array(type, input)
   if not input then return nil, nil end
-  local min = input[1]
-  local max = input[2]
-  if min < 0 then
-    error("Minimum amount cannot be negative")
-  elseif min > max then
-    error("Minimum amount must be lower than the maximum")
-  end
-  return min, max
+  validate_amounts(type, input[1], input[2], 2)
+  return input[1], input[2]
 end
 
 ---@alias data.SharedProbabilityDefinition.array {[1]:number,[2]:number}
 ---@param input data.SharedProbabilityDefinition.array?
 ---@return data.SharedProbabilityDefinition?
-local function shared_array(input)
+local function convert_shared_array(input)
   if not input then return nil end
-  local min = input[1]
-  local max = input[2]
-  if min < 0 then
-    error("Shared probability minimum cannot be lower than 0")
-  elseif min > max then
-    error("Shared probability mininmum must be lower than the maximum")
-  elseif max > 1 then
-    error("Shared probability maximum cannot be higher than 1")
-  end
-  return {
-    min = min,
-    max = max,
-  }
+  return validate_chance(input[1], input[2], 2)
 end
 
 ---A local function to localize the product function implementaton
@@ -208,9 +314,11 @@ end
 ---@param ignored_by_productivity number?
 ---@return data.ProductPrototype
 local function super_product(name, type, index, amount, amount_range, probability, shared_probability, ignored_by_stats, ignored_by_productivity)
-  if probability and probability <= 0.0 then error("Probability is 0. Did you mean to do this?") end
-  if amount and amount < 0 then error("Product result is negative") end
-  local amount_min, amount_max = amount_array(amount_range)
+  validate_chance(probability)
+  if amount then
+    validate_amounts(type, amount)
+  end
+  local amount_min, amount_max = convert_amount_array(type, amount_range)
   return {
     name = name,
     type = type or "item",
@@ -219,7 +327,7 @@ local function super_product(name, type, index, amount, amount_range, probabilit
     amount_min = amount_min,
     amount_max = amount_max,
     independent_probability = probability,
-    shared_probability = shared_array(shared_probability),
+    shared_probability = convert_shared_array(shared_probability),
     ignored_by_stats = ignored_by_stats,
     ignored_by_productivity = ignored_by_productivity,
   }--[[@as data.ProductPrototype]]
@@ -468,6 +576,330 @@ function PM.ignored_range_combined_chance(name, amount_range, probability, share
   return super_product(name, type, index, nil, amount_range, probability, shared_probability, ignored_by_stats or amount_range[2])
 end
 --TODO: add an ignored_catalyst set for ones that might produce more than input, yet don't want the extra to be prod'd
+
+--MARK: Product Builder
+
+
+---@alias Pick<T, K extends keyof T> {[P in K]: T[P];}
+---@alias Omit<T, K extends keyof T> Pick<T, Exclude<keyof T, K>>
+---@alias PartialExcept<T, K extends keyof T> Pick<T,K> & Partial<Omit<T,K>>
+
+---@alias product_builder product_builder.item | product_builder.fluid
+
+---@alias product_builder.base.partial
+---   PartialExcept<product_builder.base,'prod'|'done'>
+---@class product_builder.base
+---@field prod data.ProductPrototype
+local product_builder_base = {}
+
+---@alias product_builder.fluid.partial
+---   PartialExcept<product_builder.fluid,'prod'|'done'>
+---@class (partial) product_builder.fluid : product_builder.base
+---@field prod data.FluidProductPrototype
+local product_builder_fluid
+
+---@alias product_builder.item.partial
+---   PartialExcept<product_builder.item,'prod'|'done'>
+---@class (partial) product_builder.item :product_builder.base
+---@field prod data.ItemProductPrototype
+local product_builder_item
+
+
+---@return product_builder
+---@overload fun(name:data.ItemID,type?:"item"):product_builder.item
+---@overload fun(name:data.FluidID,type:"fluid"):product_builder.fluid
+function PM.product_builder(name, type)
+  local self
+  if type == "fluid" then
+    self = util.copy(product_builder_fluid)
+  else
+    self = util.copy(product_builder_item)
+  end
+  ---@diagnostic disable-next-line: assign-type-mismatch
+  self.prod = {
+    name = name,
+    type = type or "item"
+  }
+  return self
+end
+
+---MARK: Base Functions
+
+---@generic T : product_builder.base.partial
+---@param self T
+---@return data.ProductPrototype
+-- -@overload fun(self:product_builder.item.partial):data.ItemProductPrototype
+-- -@overload fun(self:product_builder.fluid.partial):data.FluidProductPrototype
+function product_builder_base.done(self)
+  if self.amount then
+    error("Product needs to have an amount set before it can be finished")
+  end
+  return self.prod
+end
+
+---@generic T : product_builder.base.partial
+---@param self T
+---@param min float
+---@param max? float
+---@return Omit<T,'amount'>
+---@overload fun(self:T,amount:float):Omit<T,'amount'>
+function product_builder_base.amount(self, min, max)
+  self.amount = nil
+  local prod = self.prod
+
+  validate_amounts(prod.type, min, max)
+  if max then
+    prod.amount_min = min
+    prod.amount_max = max
+  else
+    prod.amount = min
+  end
+
+  return self
+end
+
+---@param product data.ProductPrototype
+---@param error_message any
+---@return number min
+---@return number max
+---@overload fun(product:data.ItemProductPrototype,error_message:any):uint16,uint16
+---@overload fun(product:data.FluidProductPrototype,error_message:any):data.FluidAmount,data.FluidAmount
+local function get_amount(product, error_message)
+  if product.amount then
+    ---@diagnostic disable-next-line: return-type-mismatch
+    return product.amount, product.amount
+  else
+    if not product.amount_min or not product.amount_max then
+      error(error_message, 2)
+    end
+    ---@diagnostic disable-next-line: return-type-mismatch
+    return product.amount_min, product.amount_max
+  end
+end
+
+---@generic T : product_builder.base.partial
+---@param self T
+---@param num? number
+---@param can_quality nil
+---@return Omit<T,'catalyst'|'static_quality'>
+---@overload fun<T:product_builder.item.partial>(self:T,num?:number,can_quality:true):Omit<T,'catalyst'|'static_quality'>
+function product_builder_base.catalyst(self,num, can_quality)
+  self.catalyst = nil
+  self--[[@as product_builder.item.partial]].static_quality = nil
+  local product = self.prod
+  local min,max = get_amount(product, "Product amount must be defined before Catalyst amount")
+
+  num = num or max
+  if not float_range(num, 0, 1/0) then
+    error("Catalyst ammount cannot be negative")
+  end
+
+  product.ignored_by_productivity = num
+  product.ignored_by_stats = num
+
+  if not can_quality then
+    product.affected_by_quality = false
+  end
+
+  return self
+end
+
+---@generic T : product_builder.base.partial
+---@param self T
+---@param num? number
+---@return Omit<T,'catalyst'|'ignored'>
+function product_builder_base.ignored(self, num)
+  self.catalyst = nil
+  self.ignored = nil
+  local product = self.prod
+  local min,max = get_amount(product, "Product amount must be defined before Ignored amount")
+
+  num = num or max
+  if not float_range(num, 0, 1/0) then
+    error("Ignored ammount cannot be negative")
+  end
+  if num == product.ignored_by_stats then
+    error("Unecessary call to set ignored amount to the same as catalyst amount")
+  end
+  product.ignored_by_stats = num
+
+  return self
+end
+
+---@generic T : product_builder.base.partial
+---@param self T
+---@param min number
+---@param max? number
+---@return Omit<T,'chance'|'combined_chance'>
+---@overload fun(self:T,chance:number):Omit<T,'chance'|'combined_chance'>
+---@overload fun(self:T,min:number,max:number):Omit<T,'chance'|'combined_chance'>
+function product_builder_base.chance(self,min,max)
+  self.chance = nil
+  self.combined_chance = nil
+  local shared = validate_chance(min, max)
+  if shared then
+    self.prod.shared_probability = shared
+  else
+    self.prod.independent_probability = min
+  end
+  return self
+end
+
+---@generic T : product_builder.base.partial
+---@param self T
+---@param prob number
+---@param min number
+---@param max number
+---@return Omit<T,'chance'|'combined_chance'>
+function product_builder_base.combined_chance(self,prob,min,max)
+  self.chance = nil
+  self.combined_chance = nil
+  validate_chance(min)
+  self.prod.shared_probability = validate_chance(min, max)
+  self.prod.independent_probability = min
+  return self
+end
+
+--MARK: Fluid Functions
+
+---@class (partial) product_builder.fluid
+product_builder_fluid = util.copy(product_builder_base)
+
+---@generic T : product_builder.fluid.partial
+---@param self T
+---@param index uint32
+---@param ... uint32 optional_indexes
+---@return Omit<T,'index'>
+function product_builder_fluid.index(self,index, ...)
+  self.index = nil
+
+  if not type_validation.uint32(index) then
+    error("Fluidbox index must be a uint32")
+  elseif index == 0 then
+    error("Fluidbox index is already 0 by default. There is no point of defining it as so")
+  end
+
+  local additional = {...}
+  ---@type {[uint32]?:true}
+  local seen_indexes = {[index]=true}
+  for i, index in pairs(additional) do
+    if not type_validation.uint32(index) or index == 0 then
+      error("Optional fluidbox index ["..i.."] must be a non-zero uint32")
+    elseif seen_indexes[index] then
+      error("Fluidbox indexes must be unique within a recipe")
+    end
+    seen_indexes[index] = true
+  end
+
+  if not next(additional) then
+    ---@diagnostic disable-next-line: assign-type-mismatch
+    additional = nil
+  end
+
+  self.prod.fluidbox_index = index
+  self.prod.optional_fluidbox_indexes = additional
+  
+  ---@diagnostic disable-next-line: return-type-mismatch
+  return self
+end
+
+---@generic T : product_builder.fluid.partial
+---@param self T
+---@param temperature number
+---@return Omit<T,'temperature'>
+function product_builder_fluid.temperature(self,temperature)
+  self.temperature = nil
+  if not type_validation.number(temperature) then
+    error("Temperature must not be NaN")
+  end
+  self.prod.temperature = temperature
+  return self
+end
+
+---@generic T : product_builder.fluid.partial
+---@param self T
+---@param multiplier uint8
+---@return Omit<T,'multiplier'>
+function product_builder_fluid.buffer(self, multiplier)
+  self.buffer = nil
+  if not type_validation.uint8(multiplier) or multiplier == 0 then
+    error("Fluidbox multiplier must be a non-zero uint8")
+  end
+  self.prod.fluidbox_multiplier = multiplier
+  return self
+end
+
+--MARK: Item Functions
+
+---@class (partial) product_builder.item
+product_builder_item = util.copy(product_builder_base)
+
+---@generic T extends product_builder.item.partial
+---@param self T
+---@param fraction number
+---@return Omit<T,'extra'>
+function product_builder_item.extra(self, fraction)
+  self.extra = nil
+  if not float_range(fraction, 0, 1) or fraction == 1 then
+    error("Extra count fraction has to be a float within [0-1)")
+  end
+  self.prod.extra_count_fraction = fraction
+  return self
+end
+
+---@generic T extends product_builder.item.partial
+---@param self T
+---@param reset boolean If product doesn't spoil while crafting, it will reset to perfectly fresh.
+---@param fresh boolean Causes the product to start the craft as fresh as `percent_spoiled` allows it to be
+---@return Omit<T,'fresh'>
+function product_builder_item.fresh(self,reset, fresh)
+  self.fresh = nil
+  if not reset and not fresh then
+    error("Unecessary call to fresh to mark items as not fresh (default)")
+  end
+  self.prod.reset_freshness_on_craft = reset
+  self.prod.always_fresh = reset
+  return self
+end
+
+--- Give bounds to clamp to after quality_change and then the quality roll
+---@generic T extends product_builder.item.partial
+---@param self T
+---@param min? data.QualityID
+---@param max? data.QualityID
+---@return Omit<T,'quality_range'>
+function product_builder_item.quality_range(self, min, max)
+  self.quality_range = nil
+  -- FIXME: Do I want to actually check if the QualityID's are valid?
+  self.prod.quality_min = min
+  self.prod.quality_max = min
+  return self
+end
+
+---@generic T extends product_builder.item.partial
+---@param self T
+---@param bump uint8
+---@return Omit<T,'quality_bump'>
+function product_builder_item.quality_bump(self, bump)
+  self.quality_bump = nil
+  if not type_validation.int8(bump) then
+    error("Quality change must be an int8")
+  elseif bump == 0 then
+    error("Defining a quality change of 0 is unecessary")
+  end
+  self.prod.quality_change = bump
+  return self
+end
+
+---@generic T extends product_builder.item.partial
+---@param self T
+---@return Omit<T,'static_quality'>
+function product_builder_item.static_quality(self)
+  self.static_quality = nil
+  self.prod.affected_by_quality = false
+  return self
+end
+
 
 --MARK: Recipe Manipulation
 
