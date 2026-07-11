@@ -938,17 +938,13 @@ end
 ---@param item data.ItemID|data.FluidID
 ---@param type product_type?
 function PM.remove_ingredient(ingredients, item, type)
-  local filter = ingredient_product_matches(item, type)
-  ---@cast filter fun(a:data.IngredientPrototype):boolean
-  PM.remove_from_list(ingredients, filter)
+  PM.remove_from_list(ingredients, ingredient_product_matches(item, type))
 end
 ---@param products data.ProductPrototype[]
 ---@param item data.ItemID|data.FluidID
 ---@param type product_type?
 function PM.remove_products(products, item, type)
-  local filter = ingredient_product_matches(item, type)
-  ---@cast filter fun(a:data.ProductPrototype):boolean
-  PM.remove_from_list(products, filter)
+  PM.remove_from_list(products, ingredient_product_matches(item, type))
 end
 
 -- MARK: Entity Functions
@@ -960,10 +956,16 @@ end
 ---@param probability number? must be between `0` and `1`, Default is `1`
 ---@return data.ItemProductPrototype
 function PM.loot(item, count_min, count_max, probability)
-  return PM.product_builder(item)
-    :amount(count_min or 1, count_max)
-    :chance(probability)
-    :done()--[[@as data.ItemProductPrototype]]
+  if probability then
+    return PM.product_builder(item)
+      :amount(count_min or 1, count_max)
+      :chance(probability)
+      :done()--[[@as data.ItemProductPrototype]]
+  else
+    return PM.product_builder(item)
+      :amount(count_min or 1, count_max)
+      :done()--[[@as data.ItemProductPrototype]]
+  end
 end
 
 -- MARK: Technology Functions
