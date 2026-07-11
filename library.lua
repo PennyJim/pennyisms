@@ -3,6 +3,7 @@
 if ... ~= "library" then
   return require("library")
 end
+local util = require("util")
 
 ---@diagnostic disable-next-line: access-invisible
 ---@class PennyismsGlobals
@@ -98,7 +99,7 @@ PM.validate = {
   ---@return TypeGuard<integer>
   integer = function(x)
     local _, fraction = math.modf(x)
-    return fraction ~= 0
+    return fraction == 0
   end,
   ---@return TypeGuard<data.FluidAmount|FluidAmount>
   fluidamount = function(x) return float_range(x, 0, 2^40-(1/2^24)) end,
