@@ -3,8 +3,9 @@
 
 const fs = require('fs').promises
 
-/***
- * @type [RegExp, string][]
+/**
+ * OUTDATED
+ * @type {[RegExp, string][]}
  */
 const regex_and_replace_array = [
   //MARK: Ingredients
@@ -175,19 +176,193 @@ const regex_and_replace_array = [
     'PM.modify_nothing()'
   ],
 ]
+
+const regex_for_complex_replace = [
+  //MARK: Old PM funcs
+  // Basic product
+  /PM\.product\((?<name>[^)},]+),\s*(?<amount>[^)},]+)\)/g,
+  /PM\.product\((?<name>[^)},]+),\s*(?<amount>[^)},]+),\s*(?<type>[^)},]+)\)/g,
+  /PM\.product\((?<name>[^)},]+),\s*(?<amount>[^)},]+),\s*(?<type>[^)},]+),\s*(?<index>[^)},]+)\)/g,
+
+  /PM\.product_range\((?<name>[^)},]+),\s*\{(?<amount_min>[^)},]+),\s*(?<amount_max>[^)},]+)\}\)/g,
+  /PM\.product_range\((?<name>[^)},]+),\s*\{(?<amount_min>[^)},]+),\s*(?<amount_max>[^)},]+)\},\s*(?<type>[^)},]+)\)/g,
+  /PM\.product_range\((?<name>[^)},]+),\s*\{(?<amount_min>[^)},]+),\s*(?<amount_max>[^)},]+)\},\s*(?<type>[^)},]+),\s*(?<index>[^)},]+)\)/g,
+
+  /PM\.product_chance\((?<name>[^)},]+),\s*(?<amount>[^)},]+),\s*(?<probability>[^)},]+)\)/g,
+  /PM\.product_chance\((?<name>[^)},]+),\s*(?<amount>[^)},]+),\s*(?<probability>[^)},]+),\s*(?<type>[^)},]+)\)/g,
+  /PM\.product_chance\((?<name>[^)},]+),\s*(?<amount>[^)},]+),\s*(?<probability>[^)},]+),\s*(?<type>[^)},]+),\s*(?<index>[^)},]+)\)/g,
+
+  /PM\.product_range_chance\((?<name>[^)},]+),\s*\{(?<amount_min>[^)},]+),\s*(?<amount_max>[^)},]+)\},\s*(?<probability>[^)},]+)\)/g,
+  /PM\.product_range_chance\((?<name>[^)},]+),\s*\{(?<amount_min>[^)},]+),\s*(?<amount_max>[^)},]+)\},\s*(?<probability>[^)},]+),\s*(?<type>[^)},]+)\)/g,
+  /PM\.product_range_chance\((?<name>[^)},]+),\s*\{(?<amount_min>[^)},]+),\s*(?<amount_max>[^)},]+)\},\s*(?<probability>[^)},]+),\s*(?<type>[^)},]+),\s*(?<index>[^)},]+)\)/g,
+
+  /PM\.catalyst\((?<name>[^)},]+),\s*(?<amount>[^)},]+),\s*(?<catalyst>[^)},]+)\)/g,
+  /PM\.catalyst\((?<name>[^)},]+),\s*(?<amount>[^)},]+),\s*(?<catalyst>[^)},]+),\s*(?<type>[^)},]+)\)/g,
+  /PM\.catalyst\((?<name>[^)},]+),\s*(?<amount>[^)},]+),\s*(?<catalyst>[^)},]+),\s*(?<type>[^)},]+),\s*(?<index>[^)},]+)\)/g,
+
+  /PM\.catalyst_range\((?<name>[^)},]+),\s*\{(?<amount_min>[^)},]+),\s*(?<amount_max>[^)},]+)\},\s*(?<catalyst>[^)},]+)\)/g,
+  /PM\.catalyst_range\((?<name>[^)},]+),\s*\{(?<amount_min>[^)},]+),\s*(?<amount_max>[^)},]+)\},\s*(?<catalyst>[^)},]+),\s*(?<type>[^)},]+)\)/g,
+  /PM\.catalyst_range\((?<name>[^)},]+),\s*\{(?<amount_min>[^)},]+),\s*(?<amount_max>[^)},]+)\},\s*(?<catalyst>[^)},]+),\s*(?<type>[^)},]+),\s*(?<index>[^)},]+)\)/g,
+
+  /PM\.catalyst_chance\((?<name>[^)},]+),\s*(?<amount>[^)},]+),\s*(?<probability>[^)},]+),\s*(?<catalyst>[^)},]+)\)/g,
+  /PM\.catalyst_chance\((?<name>[^)},]+),\s*(?<amount>[^)},]+),\s*(?<probability>[^)},]+),\s*(?<catalyst>[^)},]+),\s*(?<type>[^)},]+)\)/g,
+  /PM\.catalyst_chance\((?<name>[^)},]+),\s*(?<amount>[^)},]+),\s*(?<probability>[^)},]+),\s*(?<catalyst>[^)},]+),\s*(?<type>[^)},]+),\s*(?<index>[^)},]+)\)/g,
+
+  /PM\.catalyst_range_chance\((?<name>[^)},]+),\s*\{(?<amount_min>[^)},]+),\s*(?<amount_max>[^)},]+)\},\s*(?<probability>[^)},]+),\s*(?<catalyst>[^)},]+)\)/g,
+  /PM\.catalyst_range_chance\((?<name>[^)},]+),\s*\{(?<amount_min>[^)},]+),\s*(?<amount_max>[^)},]+)\},\s*(?<probability>[^)},]+),\s*(?<catalyst>[^)},]+),\s*(?<type>[^)},]+)\)/g,
+  /PM\.catalyst_range_chance\((?<name>[^)},]+),\s*\{(?<amount_min>[^)},]+),\s*(?<amount_max>[^)},]+)\},\s*(?<probability>[^)},]+),\s*(?<catalyst>[^)},]+),\s*(?<type>[^)},]+),\s*(?<index>[^)},]+)\)/g,
+
+  /PM\.ignored\((?<name>[^)},]+),\s*(?<amount>[^)},]+),\s*(?<ignored>[^)},]+)\)/g,
+  /PM\.ignored\((?<name>[^)},]+),\s*(?<amount>[^)},]+),\s*(?<ignored>[^)},]+),\s*(?<type>[^)},]+)\)/g,
+  /PM\.ignored\((?<name>[^)},]+),\s*(?<amount>[^)},]+),\s*(?<ignored>[^)},]+),\s*(?<type>[^)},]+),\s*(?<index>[^)},]+)\)/g,
+
+  /PM\.ignored_range\((?<name>[^)},]+),\s*\{(?<amount_min>[^)},]+),\s*(?<amount_max>[^)},]+)\},\s*(?<ignored>[^)},]+)\)/g,
+  /PM\.ignored_range\((?<name>[^)},]+),\s*\{(?<amount_min>[^)},]+),\s*(?<amount_max>[^)},]+)\},\s*(?<ignored>[^)},]+),\s*(?<type>[^)},]+)\)/g,
+  /PM\.ignored_range\((?<name>[^)},]+),\s*\{(?<amount_min>[^)},]+),\s*(?<amount_max>[^)},]+)\},\s*(?<ignored>[^)},]+),\s*(?<type>[^)},]+),\s*(?<index>[^)},]+)\)/g,
+
+  /PM\.ignored_chance\((?<name>[^)},]+),\s*(?<amount>[^)},]+),\s*(?<probability>[^)},]+),\s*(?<ignored>[^)},]+)\)/g,
+  /PM\.ignored_chance\((?<name>[^)},]+),\s*(?<amount>[^)},]+),\s*(?<probability>[^)},]+),\s*(?<ignored>[^)},]+),\s*(?<type>[^)},]+)\)/g,
+  /PM\.ignored_chance\((?<name>[^)},]+),\s*(?<amount>[^)},]+),\s*(?<probability>[^)},]+),\s*(?<ignored>[^)},]+),\s*(?<type>[^)},]+),\s*(?<index>[^)},]+)\)/g,
+
+  /PM\.ignored_range_chance\((?<name>[^)},]+),\s*\{(?<amount_min>[^)},]+),\s*(?<amount_max>[^)},]+)\},\s*(?<probability>[^)},]+),\s*(?<ignored>[^)},]+)\)/g,
+  /PM\.ignored_range_chance\((?<name>[^)},]+),\s*\{(?<amount_min>[^)},]+),\s*(?<amount_max>[^)},]+)\},\s*(?<probability>[^)},]+),\s*(?<ignored>[^)},]+),\s*(?<type>[^)},]+)\)/g,
+  /PM\.ignored_range_chance\((?<name>[^)},]+),\s*\{(?<amount_min>[^)},]+),\s*(?<amount_max>[^)},]+)\},\s*(?<probability>[^)},]+),\s*(?<ignored>[^)},]+),\s*(?<type>[^)},]+),\s*(?<index>[^)},]+)\)/g,
+
+]
+
 if (process.argv.length !== 3) {
   console.error("Takes in a single argument that is the path of the file being modified")
   process.exit(1)
 }
 
 /**
- * @param filepath string
+ * @param {string} filepath
  * @returns Promise<string>
  */
 async function readFile(filepath) {
   const data = await fs.readFile(filepath);
   return data.toString();
 }
+
+/**
+ * @typedef Product
+ * @prop {string} name
+ * @prop {"item"|"fluid"|undefined} type
+ * @prop {string|undefined} amount
+ * @prop {string|undefined} amount_min
+ * @prop {string|undefined} amount_max
+ * @prop {string|undefined} probability
+ * @prop {string|undefined} min_probability
+ * @prop {string|undefined} max_probability
+ * @prop {string|undefined} catalyst
+ * @prop {string|undefined} ignored
+ * @prop {string|undefined} index
+ * @prop {string|undefined} optional_indexes
+ * @prop {string|undefined} temperature
+ * @prop {string|undefined} buffer
+ * @prop {string|undefined} extra
+ * @prop {string|undefined} spoiled_fresh
+ * @prop {string|undefined} spoiled_reset
+ * @prop {string|undefined} quality_min
+ * @prop {string|undefined} quality_max
+ * @prop {string|undefined} quality_bump
+ * @prop {string|undefined} static_quality
+ * @prop {string|undefined} can_quality
+ */
+
+/**
+ * @param {Product} product
+ * @return {string}
+ */
+function process_match_groups(product) {
+  //MARK: Base
+  let replacement = `PM.product(${product.name}`
+  if (product.type) {
+    replacement += `, ${product.type})`
+  } else {
+    replacement += `)`
+  }
+
+  // Amount
+  if (product.amount) {
+    replacement += `:amount(${product.amount})`
+  } else if (product.amount_min && product.amount_max) {
+    replacement += `:amount(${product.amount_min}, ${product.amount_max})`
+  } else {
+    throw Error("There was no ammount??")
+  }
+
+  if (product.extra) {
+    replacement += `:extra(${product.extra})`
+  }
+
+  // Probability
+  let has_exclusive_probability = product["min_probability"] && product["max_probability"]
+  if (product.probability && product.min_probability && product.max_probability) {
+    replacement += `:combined_chance(${product.probability}, ${product.min_probability}, ${product.max_probability})`
+  } else if (product.probability) {
+    replacement += `:chance(${product.probability})`
+  } else if (product.min_probability && product.max_probability) {
+    replacement += `:chance(${product.min_probability}, ${product.max_probability})`
+  }
+
+  // Catalyst
+  if (product.catalyst) {
+    replacement += `:catalyst(${product.catalyst}`
+    if (product.can_quality) {
+      replacement += `, ${product.can_quality})`
+    } else {
+      replacement += `)`
+    }
+  }
+
+  // Ignored
+  if (product.ignored) {
+    replacement += `:ignored(${product.ignored})`
+  }
+
+  //MARK: Fluid
+  if (product.index) {
+    replacement += `:index(${product.index}`
+    if (product.optional_indexes) {
+      replacement += `, ${product.optional_indexes})`
+    } else {
+      replacement += `)`
+    }
+  }
+
+  if (product.temperature) {
+    replacement += `:temperature(${product.temperature})`
+  }
+  if (product.buffer) {
+    replacement += `:buffer(${product.buffer})`
+  }
+
+  //MARK: Item
+  if (product.spoiled_fresh || product.spoiled_reset) {
+    let reset = product.spoiled_reset ? product.spoiled_reset : "false"
+    let fresh = product.spoiled_fresh ? product.spoiled_fresh : "false"
+    replacement += `:fresh(${reset}, ${fresh})`
+  }
+
+  if (product.quality_min || product.quality_max) {
+    let min = product.quality_min ? product.quality_min : "nil"
+    let max = product.quality_max ? product.quality_max : "nil"
+    replacement += `:quality_range(${min}, ${max})`
+  }
+
+  if (product.quality_bump) {
+    replacement += `:quality_bump(${product.quality_bump})`
+  }
+
+  if (product.static_quality) {
+    replacement += `:static_quality(${product.static_quality})`
+  }
+
+  replacement += `:done()`
+  return replacement
+}
+
 
 (async () => {
   let given_path = process.argv[2]
@@ -215,8 +390,35 @@ async function readFile(filepath) {
       let file_contents = await readFile(file)
       
       const startTime = performance.now()
-      for (const regex_and_replace of regex_and_replace_array) {
-        file_contents = file_contents.replace(regex_and_replace[0], regex_and_replace[1])
+      for (const regex of regex_for_complex_replace) {
+        /**
+         * @typedef Replacement
+         * @prop {number} start
+         * @prop {number} end
+         * @prop {string} replacement
+         */
+        /**
+         * @type {Replacement[]}
+         */
+        let matches = []
+        for (const match of file_contents.matchAll(regex)) {
+          let product = match.groups
+          if (!product) continue;
+
+          matches[matches.length] = {
+            start: match.index,
+            end: match.index + match[0].length,
+            replacement: process_match_groups(product)
+          }
+        }
+
+        for (let index = matches.length-1; index >= 0 ; index--) {
+          const match = matches[index];
+
+          let start = file_contents.substring(0, match.start)
+          let end = file_contents.substring(match.end)
+          file_contents = start + match.replacement + end
+        }
       }
       const endTime = performance.now()
       console.log(`Replaced all ingredients and products within ${file} in ${endTime-startTime} milliseconds`)
